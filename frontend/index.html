@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Potato Disease Classification</title>
+  <style>
+     body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('./images/potato.jpg') no-repeat center center fixed;
+      background-size: cover;
+      filter: blur(5px);
+      z-index: -1;
+    }
+
+    .overlay {
+      position: relative;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .drag-drop {
+      width: 70%;
+      max-width: 400px;
+      height: 250px;
+      border: 2px dashed #999;
+      border-radius: 10px;
+      background-color: rgba(255, 255, 255, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .drag-drop::before {
+      content: '+';
+      font-size: 40px;
+      color: #666;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
+
+    .drag-drop img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 10px;
+    }
+
+    .drag-drop p {
+      margin: 0;
+      color: #666;
+      font-size: 16px;
+      text-align: center;
+      z-index: 2;
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 5px;
+      border-radius: 5px;
+    }
+
+    .drag-drop:hover {
+      background-color: rgba(230, 230, 230, 0.9);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .upload-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      color: #fff;
+      background-color: #28a745;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .upload-button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <div class="background"></div>
+  <div class="overlay">
+    <div class="drag-drop" id="dragDropArea">
+      <p id="dragDropText">Drag and drop an image of a potato plant leaf here<br>or click to upload</p>
+      <img id="imagePreview" class="hidden" alt="Preview">
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+    </div>
+    <button id="uploadButton" class="upload-button hidden">Upload</button>
+    <div id="result" style="margin-top: 20px; font-size: 18px; color: #333;"></div>
+    <button id="reloadButton" class="upload-button hidden">Test New Image</button>
+
+  </div>
+
+  <script>
+    const dragDropArea = document.getElementById('dragDropArea');
+const fileInput = document.getElementById('fileInput');
+const imagePreview = document.getElementById('imagePreview');
+const dragDropText = document.getElementById('dragDropText');
+const uploadButton = document.getElementById('uploadButton');
+const reloadButton = document.getElementById('reloadButton');
+
+// Result display container
+const resultContainer = document.createElement('div');
+resultContainer.id = 'result';
+resultContainer.style.marginTop = '20px';
+resultContainer.style.fontSize = '18px';
+resultContainer.style.color = '#333';
+uploadButton.parentElement.appendChild(resultContainer);
+
+// Handle click event to trigger file input
+dragDropArea.addEventListener('click', () => fileInput.click());
+
+// Handle file input change event
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    displayImagePreview(file);
+  }
+});
+
+// Handle drag-and-drop events
+dragDropArea.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  dragDropArea.style.backgroundColor = 'rgba(230, 230, 230, 0.9)';
+});
+
+dragDropArea.addEventListener('dragleave', () => {
+  dragDropArea.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+});
+
+dragDropArea.addEventListener('drop', (event) => {
+  event.preventDefault();
+  dragDropArea.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+
+  const file = event.dataTransfer.files[0];
+  if (file) {
+    displayImagePreview(file);
+  }
+});
+
+// Display the image preview
+function displayImagePreview(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    imagePreview.src = e.target.result;
+    imagePreview.classList.remove('hidden');
+    dragDropText.classList.add('hidden');
+    uploadButton.classList.remove('hidden');
+    reloadButton.classList.add('hidden'); // Hide reload button initially
+  };
+  reader.readAsDataURL(file);
+}
+
+// Handle upload button click event
+uploadButton.addEventListener('click', () => {
+  const file = fileInput.files[0];
+  if (file) {
+    // Reset previous result container
+    resultContainer.innerText = '';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Send image to FastAPI backend
+    fetch('http://localhost:8000/predict', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(response => response.json())
+      .then(data => {
+        // Display result in the result container
+        resultContainer.innerText = 
+          `Prediction: ${data.class}\nConfidence: ${(data.confidence * 100).toFixed(2)}%`;
+        
+        // Show the reload button after upload
+        reloadButton.classList.remove('hidden');
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        resultContainer.innerText = 'Failed to process the image. Please try again.';
+      });
+  } else {
+    alert('Please upload an image before clicking the upload button.');
+  }
+});
+
+// Handle reload button click event
+reloadButton.addEventListener('click', () => {
+  // Reset everything when reload button is clicked
+  window.location.reload();  // Reload the page to reset all fields
+});
+
+  </script>
+</body>
+</html>
