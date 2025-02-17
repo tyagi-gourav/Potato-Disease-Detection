@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # Updated model path
-MODEL_PATH = "D:/Projects section/Final year project/potato-project/saved_models/2"
+MODEL_PATH = "D:/Projects section/Final year project/potato-project/saved_models/3"
 
 # Check if model exists before loading
 if not os.path.exists(MODEL_PATH):
